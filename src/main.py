@@ -90,7 +90,7 @@ class HomeKit:
             name       = ''.join(e for e in device['name'] if e.isalnum())
             room       = ''.join(e for e in device['room'] if e.isalnum())
             reachable  = device['reachable']
-            type       = device['type']
+            type       = device['type'].replace("-", "_")
             metricsStr = f'homekit_{type}_{room}_{name}'.lower()
 
             metrics[f'{metricsStr}_reachable'] = reachable
