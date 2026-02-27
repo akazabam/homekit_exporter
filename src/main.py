@@ -1,6 +1,8 @@
 #!/usr/local/bin/python3
 
 import requests
+import signal
+import sys
 import time
 import yaml
 
@@ -9,6 +11,9 @@ from requests.exceptions import HTTPError
 from urllib.parse import quote, quote_plus
 
 def main():
+    signal.signal(signal.SIGTERM, shutdownHandler)
+    signal.signal(signal.SIGINT, shutdownHandler)
+
     h = HomeKit('homekit_exporter.yaml')
     metrics = {}
     homekitMetrics = h.getAllDeviceMetrics()
@@ -19,9 +24,16 @@ def main():
     start_http_server(8000)
 
     while True:
-        for metric, value in h.getAllDeviceMetrics().items():
-            metrics[metric].set(value)
-        time.sleep(h.getPollTime())
+        try:
+            for metric, value in h.getAllDeviceMetrics().items():
+                metrics[metric].set(value)
+            time.sleep(h.getPollTime())
+        except Exception as err:
+            print(err)
+
+def shutdownHandler(signum, frame):
+    print(f'Received {signum}. Shutting down.')
+    sys.exit(0)
 
 def getNestedValue(obj, *path, default=None):
     for index in path:
