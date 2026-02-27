@@ -4,7 +4,7 @@ This project exports metrics from Apple Home devices using [Itsyhome](https://gi
 ## Requirements
 
 You will need the following:
-* A Mac signed in with your Apple account and Apple Home working (I use an old headless Mac Mini)
+* A Mac signed in with your Apple account and Apple Home working (I use an old headless Mac Mini). Presumable you will want it set up to never sleep.
 * Docker Desktop
 * The Pro version of [Itsyhome](https://github.com/nickustinov/itsyhome-macos)
 
