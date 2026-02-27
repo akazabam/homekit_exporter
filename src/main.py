@@ -54,45 +54,53 @@ class HomeKit:
         self.temperature = getNestedValue(self.confData, 'settings', 'temperature', default='F')
         self.req         = requests.Session()
         self.metricsDesc = {}
+        self.rooms       = {}
 
     def _readConfig(self):
         with open(self.confFile, 'r') as file:
             return yaml.safe_load(file)
 
-    def getDeviceInfo(self, device):
-        encDevice = quote(device)
-        DeviceUrl = f'http://{self.host}:{self.port}/info/{encDevice}'
+    def getRooms(self):
+        roomsUrl = f'http://{self.host}:{self.port}/list/rooms'
         try:
-            r = self.req.get(DeviceUrl)
-            r.raise_for_status()
+            r = self.req.get(roomsUrl)
         except HTTPError as httpErr:
             return {'error': httpErr}
         except Exception as err:
             return {'error': err}
 
-        return r.json()
+        for roomDict in r.json():
+            room = roomDict['name']
+            if room not in self.rooms:
+                self.rooms[room] = HomeKitRoom(self, room)
 
     def getAllDeviceMetrics(self):
+        self.getRooms()
+
+        devices = []
+        for room, r in self.rooms.items():
+            devices.extend(r.getDevices())
+            
         metrics = {}
-        for device in self.confData['devices']:
-            jsonOut = self.getDeviceInfo(device)
-            if 'error' in jsonOut:
-                error = jsonOut['error']
+        for device in devices:
+            if 'error' in device:
+                error = device['error']
                 print(f'WARNING: {device} info check returned: {error}')
                 continue
-            name      = jsonOut['name']
-            room      = jsonOut['room']
-            reachable = jsonOut['reachable']
-            type      = jsonOut['type']
-            metricsStr = f'homekit_{type}_{room}_{name}'.lower().replace(" ", "")
+            name       = ''.join(e for e in device['name'] if e.isalnum())
+            room       = ''.join(e for e in device['room'] if e.isalnum())
+            reachable  = device['reachable']
+            type       = device['type']
+            metricsStr = f'homekit_{type}_{room}_{name}'.lower()
 
             metrics[f'{metricsStr}_reachable'] = reachable
-            self.metricsDesc[f'{metricsStr}_reachable'] = f'Reachable metric for device {device}'
+            self.metricsDesc[f'{metricsStr}_reachable'] = f'Reachable metric for device {room}/{name}'
 
-            for metric, value in jsonOut['state'].items():
+            if 'state' not in device:
+                continue
+            for metric, value in device['state'].items():
                 if isinstance(value, str):
-                #    metric = f'state_{value}'
-                #    value  = 1
+                     # Can't handle strings right now
                      continue
                 m = f'{metricsStr}_{metric}'
                 if 'temperature' in metric.lower():
@@ -100,7 +108,7 @@ class HomeKit:
                         value = (value * 9/5) + 32
                 metrics[m] = value
                 if m not in self.metricsDesc:
-                    self.metricsDesc[m] = f'{metric.capitalize()} metric for device {device}'
+                    self.metricsDesc[m] = f'{metric.capitalize()} metric for device {room}/{name}'
         return metrics
 
     def getPollTime(self):
@@ -108,6 +116,24 @@ class HomeKit:
 
     def getMetricsDescriptions(self):
         return self.metricsDesc
+
+class HomeKitRoom:
+    def __init__(self, h, room):
+        self.h       = h
+        self.room    = room
+
+    def getDevices(self):
+        encRoom = quote(self.room)
+        DeviceUrl = f'http://{self.h.host}:{self.h.port}/info/{encRoom}'
+        try:
+            r = self.h.req.get(DeviceUrl)
+            r.raise_for_status()
+        except HTTPError as httpErr:
+            return {'error': httpErr}
+        except Exception as err:
+            return {'error': err}
+
+        return r.json()
 
 if __name__ == '__main__':
     exit(main())
