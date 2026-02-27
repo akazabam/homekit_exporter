@@ -1,0 +1,8 @@
+connection:
+    host: 'host.docker.internal'
+    port: 8423
+devices:
+  - 'Example Room/Example Device'
+settings:
+    poll: 30
+    temperature: 'F'
