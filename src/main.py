@@ -19,17 +19,25 @@ def main():
     homekitMetrics = h.getAllDeviceMetrics()
     homekitMetricsDesc = h.getMetricsDescriptions()
     for metric, value in homekitMetrics.items():
-        metrics[metric] = Gauge(metric, f'{homekitMetricsDesc[metric]}')
+        label = []
+        if isinstance(value, str):
+            label = [metric.split('_')[-1]]
+        metrics[metric] = Gauge(metric, f'{homekitMetricsDesc[metric]}', label)
 
     start_http_server(8000)
 
     while True:
         try:
             for metric, value in h.getAllDeviceMetrics().items():
+                if isinstance(value, str):
+                    label = metric.split('_')[-1]
+                    metrics[metric].clear()
+                    metrics[metric].labels(**{label:value}).set(1)
+                    continue
                 metrics[metric].set(value)
-            time.sleep(h.getPollTime())
         except Exception as err:
             print(err)
+        time.sleep(h.getPollTime())
 
 def shutdownHandler(signum, frame):
     print(f'Received {signum}. Shutting down.')
@@ -99,9 +107,6 @@ class HomeKit:
             if 'state' not in device:
                 continue
             for metric, value in device['state'].items():
-                if isinstance(value, str):
-                     # Can't handle strings right now
-                     continue
                 m = f'{metricsStr}_{metric}'
                 if 'temperature' in metric.lower():
                     if self.temperature.lower() == 'f':
