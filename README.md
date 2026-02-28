@@ -22,4 +22,138 @@ In Itsyhome, Go to Settings -> Webhooks/CLI -> Enable server. You can stop here,
 
 ## Current Limitations
 
-Prometheus can only store numeric data. Any device state reporting a string (e.g. Garage door that has a state of "open" or "closed") will currently be ignored.
+Prometheus can only store numeric data, but Homekit devices can sometimes report metric values as strings. These metric types store their values in Prometheus as labels. For example, this is what a thermostat mode metric will look like from the exporter:
+
+```
+# HELP homekit_thermostat_livingroom_downstairs_mode Mode metric for device LivingRoom/Downstairs
+# TYPE homekit_thermostat_livingroom_downstairs_mode gauge
+homekit_thermostat_livingroom_downstairs_mode{mode="heat"} 1.0
+```
+
+Where the actual value is a meaningless "1", and the real data is, in this case mode="heat" (and as a thermostat, could also be "cool" or "off"). These lables are created and cleared automatically.
+
+**NOTE**: This is sort of considered a poor use of Prometheus, so **use this at your own risk**.
+
+Here is an example of a Grafana panel that uses a thermostat mode metric to show run mode in a State Timeline:
+
+```
+
+  "id": 6,
+  "type": "state-timeline",
+  "title": "",
+  "gridPos": {
+    "x": 0,
+    "y": 8,
+    "h": 2,
+    "w": 12
+  },
+  "fieldConfig": {
+    "defaults": {
+      "custom": {
+        "lineWidth": 0,
+        "fillOpacity": 70,
+        "spanNulls": 120000,
+        "insertNulls": false,
+        "hideFrom": {
+          "tooltip": false,
+          "viz": false,
+          "legend": false
+        },
+        "axisPlacement": "auto"
+      },
+      "color": {
+        "mode": "thresholds"
+      },
+      "mappings": [
+        {
+          "options": {
+            "cool": {
+              "color": "blue",
+              "index": 2
+            },
+            "heat": {
+              "color": "dark-red",
+              "index": 0
+            },
+            "off": {
+              "color": "#80808029",
+              "index": 1
+            }
+          },
+          "type": "value"
+        }
+      ],
+      "thresholds": {
+        "mode": "absolute",
+        "steps": [
+          {
+            "color": "green",
+            "value": null
+          }
+        ]
+      }
+    },
+    "overrides": [
+      {
+        "matcher": {
+          "id": "byName",
+          "options": "Metric"
+        },
+        "properties": [
+          {
+            "id": "displayName",
+            "value": "Mode"
+          }
+        ]
+      }
+    ]
+  },
+  "transformations": [
+    {
+      "id": "seriesToRows",
+      "options": {}
+    },
+    {
+      "id": "organize",
+      "options": {
+        "excludeByName": {
+          "Value": true
+        },
+        "includeByName": {},
+        "indexByName": {},
+        "renameByName": {}
+      }
+    }
+  ],
+  "pluginVersion": "12.4.0",
+  "targets": [
+    {
+      "editorMode": "builder",
+      "expr": "homekit_thermostat_masterbedroom_upstairs_mode",
+      "legendFormat": "{{mode}}",
+      "range": true,
+      "refId": "A"
+    }
+  ],
+  "datasource": {
+    "type": "prometheus",
+    "uid": "afeftskou718gf"
+  },
+  "options": {
+    "mergeValues": true,
+    "showValue": "never",
+    "alignValue": "left",
+    "rowHeight": 0.9,
+    "legend": {
+      "showLegend": false,
+      "displayMode": "list",
+      "placement": "bottom"
+    },
+    "tooltip": {
+      "mode": "single",
+      "sort": "none",
+      "hideZeros": false
+    }
+  }
+}
+```
