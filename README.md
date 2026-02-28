@@ -37,7 +37,7 @@ Where the actual value is a meaningless "1", and the real data is, in this case 
 Here is an example of a Grafana panel that uses a thermostat mode metric to show run mode in a State Timeline:
 
 ```
-
+{
   "id": 6,
   "type": "state-timeline",
   "title": "",
