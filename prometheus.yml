@@ -3,10 +3,10 @@ global:
 
 scrape_configs:
   - job_name: 'prometheus'
-    scrape_interval: 15s
+    scrape_interval: 30s
     static_configs:
       - targets: ['localhost:9090']
 
-  - job_name: 'node'
+  - job_name: 'homekit'
     static_configs:
       - targets: ['homekit_exporter:8000']
